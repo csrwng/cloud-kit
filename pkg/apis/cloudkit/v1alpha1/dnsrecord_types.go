@@ -18,21 +18,31 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
-
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // DNSRecordSpec defines the desired state of DNSRecord
 type DNSRecordSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// RecordName is the name of the DNS record. This must be a valid DNS name
+	// or wildcard.
+	RecordName string `json:"recordName"`
+
+	// RecordType is the type of DNS record
+	RecordType DNSRecordType `json:"recordType"`
+
+	// Value is the value of the DNS record. The format of the value will depend
+	// on the type of DNS Record. If empty, the cloud provider should populate it
+	// with the current value on the cloud record if it already exists.
+	Value *string `json:"value,omitempty"`
+
+	// ProviderSpec is the spec specific to a particular cloud provider.
+	ProviderSpec *runtime.RawExtension `json:"providerSpec,omitempty"`
 }
 
 // DNSRecordStatus defines the observed state of DNSRecord
 type DNSRecordStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	//ProviderStatus is the status specific to a particular cloud provider.
+	ProviderStatus *runtime.RawExtension `json:"providerStatus,omitempty"`
 }
 
 // +genclient
@@ -56,6 +66,24 @@ type DNSRecordList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []DNSRecord `json:"items"`
 }
+
+// DNSRecordType is the type of a DNS record
+type DNSRecordType string
+
+const (
+	DNSRecordA     DNSRecordType = "A"
+	DNSRecordCNAME DNSRecordType = "CNAME"
+	DNSRecordMX    DNSRecordType = "MX"
+	DNSRecordAAAA  DNSRecordType = "AAAA"
+	DNSRecordTXT   DNSRecordType = "TXT"
+	DNSRecordPTR   DNSRecordType = "PTR"
+	DNSRecordSRV   DNSRecordType = "SRV"
+	DNSRecordSPF   DNSRecordType = "SPF"
+	DNSRecordNAPTR DNSRecordType = "NAPTR"
+	DNSRecordCAA   DNSRecordType = "CAA"
+	DNSRecordNS    DNSRecordType = "NS"
+	DNSRecordSOA   DNSRecordType = "SOA"
+)
 
 func init() {
 	SchemeBuilder.Register(&DNSRecord{}, &DNSRecordList{})

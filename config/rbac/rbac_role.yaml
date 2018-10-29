@@ -19,7 +19,7 @@ rules:
 - apiGroups:
   - cloudkit.openshift.io
   resources:
-  - dnsdomains
+  - dnsrecords
   verbs:
   - get
   - list
@@ -43,7 +43,7 @@ rules:
 - apiGroups:
   - cloudkit.openshift.io
   resources:
-  - dnsrecords
+  - dnszones
   verbs:
   - get
   - list

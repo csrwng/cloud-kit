@@ -17,10 +17,10 @@ limitations under the License.
 package controller
 
 import (
-	"github.com/openshift/cloud-kit/pkg/controller/dnsdomain"
+	"github.com/openshift/cloud-kit/pkg/controller/dnszone"
 )
 
 func init() {
 	// AddToManagerFuncs is a list of functions to create controllers and add them to a manager.
-	AddToManagerFuncs = append(AddToManagerFuncs, dnsdomain.Add)
+	AddToManagerFuncs = append(AddToManagerFuncs, dnszone.Add)
 }

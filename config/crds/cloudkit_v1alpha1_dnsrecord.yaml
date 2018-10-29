@@ -21,8 +21,23 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            providerSpec:
+              type: object
+            recordName:
+              type: string
+            recordType:
+              type: string
+            value:
+              type: string
+          required:
+          - recordName
+          - recordType
           type: object
         status:
+          properties:
+            providerStatus:
+              type: object
           type: object
   version: v1alpha1
 status:

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package dnsdomain
+package dnszone
 
 import (
 	"context"
@@ -42,7 +42,7 @@ import (
 * business logic.  Delete these comments after modifying this file.*
  */
 
-// Add creates a new DNSDomain Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
+// Add creates a new DNSZone Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 // USER ACTION REQUIRED: update cmd/manager/main.go to call this cloudkit.Add(mgr) to install this Controller
 func Add(mgr manager.Manager) error {
@@ -51,28 +51,28 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileDNSDomain{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileDNSZone{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("dnsdomain-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("dnszone-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to DNSDomain
-	err = c.Watch(&source.Kind{Type: &cloudkitv1alpha1.DNSDomain{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to DNSZone
+	err = c.Watch(&source.Kind{Type: &cloudkitv1alpha1.DNSZone{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
 	// TODO(user): Modify this to be the types you create
-	// Uncomment watch a Deployment created by DNSDomain - change this for objects you create
+	// Uncomment watch a Deployment created by DNSZone - change this for objects you create
 	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &cloudkitv1alpha1.DNSDomain{},
+		OwnerType:    &cloudkitv1alpha1.DNSZone{},
 	})
 	if err != nil {
 		return err
@@ -81,24 +81,24 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-var _ reconcile.Reconciler = &ReconcileDNSDomain{}
+var _ reconcile.Reconciler = &ReconcileDNSZone{}
 
-// ReconcileDNSDomain reconciles a DNSDomain object
-type ReconcileDNSDomain struct {
+// ReconcileDNSZone reconciles a DNSZone object
+type ReconcileDNSZone struct {
 	client.Client
 	scheme *runtime.Scheme
 }
 
-// Reconcile reads that state of the cluster for a DNSDomain object and makes changes based on the state read
-// and what is in the DNSDomain.Spec
+// Reconcile reads that state of the cluster for a DNSZone object and makes changes based on the state read
+// and what is in the DNSZone.Spec
 // TODO(user): Modify this Reconcile function to implement your Controller logic.  The scaffolding writes
 // a Deployment as an example
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=cloudkit.openshift.io,resources=dnsdomains,verbs=get;list;watch;create;update;patch;delete
-func (r *ReconcileDNSDomain) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	// Fetch the DNSDomain instance
-	instance := &cloudkitv1alpha1.DNSDomain{}
+// +kubebuilder:rbac:groups=cloudkit.openshift.io,resources=dnszones,verbs=get;list;watch;create;update;patch;delete
+func (r *ReconcileDNSZone) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	// Fetch the DNSZone instance
+	instance := &cloudkitv1alpha1.DNSZone{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {

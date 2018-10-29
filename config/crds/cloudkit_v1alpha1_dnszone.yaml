@@ -4,12 +4,12 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: dnsdomains.cloudkit.openshift.io
+  name: dnszones.cloudkit.openshift.io
 spec:
   group: cloudkit.openshift.io
   names:
-    kind: DNSDomain
-    plural: dnsdomains
+    kind: DNSZone
+    plural: dnszones
   scope: Namespaced
   validation:
     openAPIV3Schema:
@@ -21,8 +21,18 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            providerSpec:
+              type: object
+            zoneName:
+              type: string
+          required:
+          - zoneName
           type: object
         status:
+          properties:
+            providerStatus:
+              type: object
           type: object
   version: v1alpha1
 status:
