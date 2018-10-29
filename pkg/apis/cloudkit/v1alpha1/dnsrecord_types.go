@@ -21,8 +21,17 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+// DNSRecordFinalizer is set on DNSRecords to invoke Delete on their actuator
+const DNSRecordFinalizer = "dnsrecord.cloudkit.openshift.io"
+
 // DNSRecordSpec defines the desired state of DNSRecord
 type DNSRecordSpec struct {
+
+	// ZoneName is the name of the zone where this DNS record should live.
+	// Depending on the provider, this may not be enough to identify the
+	// zone and additional information must be provider in the providerSpec
+	ZoneName string `json:"zoneName"`
+
 	// RecordName is the name of the DNS record. This must be a valid DNS name
 	// or wildcard.
 	RecordName string `json:"recordName"`

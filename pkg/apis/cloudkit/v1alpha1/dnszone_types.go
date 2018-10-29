@@ -21,6 +21,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+// DNSZoneFinalizer is set on DNSZones to invoke Delete on their actuator
+const DNSZoneFinalizer = "dnszone.cloudkit.openshift.io"
+
 // DNSZoneSpec defines the desired state of DNSZone
 type DNSZoneSpec struct {
 	// ZoneName is the DNS name of the Zone

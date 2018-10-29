@@ -30,7 +30,10 @@ spec:
               type: string
             value:
               type: string
+            zoneName:
+              type: string
           required:
+          - zoneName
           - recordName
           - recordType
           type: object

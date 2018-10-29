@@ -14,13 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controller
+package dnsrecord
 
 import (
-	"github.com/openshift/cloud-kit/pkg/controller/dnsrecord"
+	cloudkitv1 "github.com/openshift/cloud-kit/pkg/apis/cloudkit/v1alpha1"
 )
 
-func init() {
-	// AddToManagerFuncs is a list of functions to create controllers and add them to a manager.
-	AddToManagerFuncs = append(AddToManagerFuncs, dnsrecord.Add)
+// Actuator is an interface that must be implemented by a specific cloud
+// provider to manage DNS records.
+type Actuator interface {
+	// Create the DNS record.
+	Create(*cloudkitv1.DNSRecord) error
+	// Delete the DNS record.
+	Delete(*cloudkitv1.DNSRecord) error
+	// Update the DNS record.
+	Update(*cloudkitv1.DNSRecord) error
+	// Checks if the DNS record currently exists.
+	Exists(*cloudkitv1.DNSRecord) (bool, error)
 }
