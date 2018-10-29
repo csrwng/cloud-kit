@@ -1,0 +1,9 @@
+apiVersion: cloudkit.openshift.io/v1alpha1
+kind: DNSRecord
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: dnsrecord-sample
+spec:
+  # Add fields here
+  foo: bar
