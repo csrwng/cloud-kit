@@ -19,6 +19,8 @@ package dnszone
 import (
 	"context"
 
+	log "github.com/sirupsen/logrus"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -45,6 +47,7 @@ func newReconciler(mgr manager.Manager, actuator Actuator) reconcile.Reconciler 
 		Client:   mgr.GetClient(),
 		scheme:   mgr.GetScheme(),
 		actuator: actuator,
+		log:      log.WithField("controller", "dnszone"),
 	}
 }
 
@@ -53,12 +56,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
 	c, err := controller.New("dnszone-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
+		log.WithError(err).Error("error creating a new dnsrecord controller")
 		return err
 	}
 
 	// Watch for changes to DNSZone
 	err = c.Watch(&source.Kind{Type: &cloudkitv1.DNSZone{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
+		log.WithError(err).Error("error starting watch of DNSZone")
 		return err
 	}
 
@@ -72,6 +77,7 @@ type ReconcileDNSZone struct {
 	client.Client
 	scheme   *runtime.Scheme
 	actuator Actuator
+	log      log.FieldLogger
 }
 
 // Reconcile reads that state of the cluster for a DNSZone object and makes changes based on the state read
@@ -80,15 +86,19 @@ type ReconcileDNSZone struct {
 // +kubebuilder:rbac:groups=cloudkit.openshift.io,resources=dnszones,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileDNSZone) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the DNSZone instance
+	logger := r.log.WithField("dnszone", request.NamespacedName.String())
+	logger.Info("syncing dnszone")
 	zone := &cloudkitv1.DNSZone{}
 	err := r.Get(context.TODO(), request.NamespacedName, zone)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
+			logger.Warning("resource was not found, nothing to do")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
+		logger.WithError(err).Error("error retrieving resource")
 		return reconcile.Result{}, err
 	}
 
@@ -97,50 +107,57 @@ func (r *ReconcileDNSZone) Reconcile(request reconcile.Request) (reconcile.Resul
 		!util.HasFinalizer(zone, cloudkitv1.DNSZoneFinalizer) {
 		util.AddFinalizer(zone, cloudkitv1.DNSZoneFinalizer)
 		if err = r.Update(context.Background(), zone); err != nil {
+			logger.WithError(err).Error("error adding finalizer")
 			return reconcile.Result{}, err
 		}
+		logger.Debug("finalizer added")
+		return reconcile.Result{}, nil
 	}
 
 	if !zone.ObjectMeta.DeletionTimestamp.IsZero() {
 		// no-op if finalizer has been removed.
 		if !util.HasFinalizer(zone, cloudkitv1.DNSZoneFinalizer) {
-			// glog.Infof("reconciling machine object %v causes a no-op as there is no finalizer.", name)
+			logger.Debug("deleted resource with no finalizer present, nothing to do")
 			return reconcile.Result{}, nil
 		}
-		// glog.Infof("reconciling machine object %v triggers delete.", name)
+		logger.Debug("reconciling dnszone triggers actuator delete.")
 		if err := r.actuator.Delete(zone); err != nil {
-			// glog.Errorf("Error deleting machine object %v; %v", name, err)
+			logger.WithError(err).Error("error deleting dnszone object")
 			return reconcile.Result{}, err
 		}
 
 		// Remove finalizer on successful deletion.
-		// glog.Infof("machine object %v deletion successful, removing finalizer.", name)
+		logger.Debug("dnszone deletion successful, removing finalizer.")
 		util.DeleteFinalizer(zone, cloudkitv1.DNSZoneFinalizer)
 		if err := r.Client.Update(context.Background(), zone); err != nil {
-			// glog.Errorf("Error removing finalizer from machine object %v; %v", name, err)
+			logger.WithError(err).Error("error removing finalizer from dnszone object")
 			return reconcile.Result{}, err
 		}
+		logger.Debug("dnszone finalizer removed")
 		return reconcile.Result{}, nil
 	}
 
 	exist, err := r.actuator.Exists(zone)
 	if err != nil {
-		// glog.Errorf("Error checking existence of machine instance for machine object %v; %v", name, err)
+		logger.WithError(err).Error("error checking existence of dnszone")
 		return reconcile.Result{}, err
 	}
 	if exist {
-		// glog.Infof("Reconciling machine object %v triggers idempotent update.", name)
+		logger.Debug("dnszone exists, calling idempotent update")
 		err := r.actuator.Update(zone)
 		if err != nil {
-			// glog.Warningf("unable to update machine %v: %v", name, err)
+			logger.WithError(err).Error("error updating dnszone")
 			return reconcile.Result{}, err
 		}
+		logger.Debug("dnszone updated successfully")
 		return reconcile.Result{}, nil
 	}
-	// glog.Infof("Reconciling machine object %v triggers idempotent create.", m.ObjectMeta.Name)
+	logger.Debug("dnszone does not exist, calling create")
 	if err := r.actuator.Create(zone); err != nil {
-		// glog.Warningf("unable to create machine %v: %v", name, err)
+		logger.WithError(err).Error("error creating dnszone")
 		return reconcile.Result{}, err
 	}
+	logger.Debug("dnszone created successfully")
+
 	return reconcile.Result{}, nil
 }

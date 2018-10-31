@@ -19,6 +19,8 @@ package dnsrecord
 import (
 	"context"
 
+	log "github.com/sirupsen/logrus"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -45,6 +47,7 @@ func newReconciler(mgr manager.Manager, actuator Actuator) reconcile.Reconciler 
 		Client:   mgr.GetClient(),
 		scheme:   mgr.GetScheme(),
 		actuator: actuator,
+		log:      log.WithField("controller", "dnsrecord"),
 	}
 }
 
@@ -53,12 +56,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
 	c, err := controller.New("dnsrecord-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
+		log.WithError(err).Error("error creating a new dnsrecord controller")
 		return err
 	}
 
 	// Watch for changes to DNSRecord
 	err = c.Watch(&source.Kind{Type: &cloudkitv1.DNSRecord{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
+		log.WithError(err).Error("error starting watch of DNSRecord")
 		return err
 	}
 
@@ -72,6 +77,7 @@ type ReconcileDNSRecord struct {
 	client.Client
 	scheme   *runtime.Scheme
 	actuator Actuator
+	log      log.FieldLogger
 }
 
 // Reconcile reads that state of the cluster for a DNSRecord object and makes changes based on the state read
@@ -80,15 +86,19 @@ type ReconcileDNSRecord struct {
 // +kubebuilder:rbac:groups=cloudkit.openshift.io,resources=dnsrecords,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileDNSRecord) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the DNSRecord instance
+	logger := r.log.WithField("dnsrecord", request.NamespacedName.String())
+	logger.Info("syncing dnsrecord")
 	record := &cloudkitv1.DNSRecord{}
 	err := r.Get(context.TODO(), request.NamespacedName, record)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
+			logger.Warning("resource was not found, nothing to do")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
+		logger.WithError(err).Error("error retrieving resource")
 		return reconcile.Result{}, err
 	}
 
@@ -97,51 +107,57 @@ func (r *ReconcileDNSRecord) Reconcile(request reconcile.Request) (reconcile.Res
 		!util.HasFinalizer(record, cloudkitv1.DNSRecordFinalizer) {
 		util.AddFinalizer(record, cloudkitv1.DNSRecordFinalizer)
 		if err = r.Update(context.Background(), record); err != nil {
+			logger.WithError(err).Error("error adding finalizer")
 			return reconcile.Result{}, err
 		}
+		logger.Debug("finalizer added")
+		return reconcile.Result{}, nil
 	}
 
 	if !record.ObjectMeta.DeletionTimestamp.IsZero() {
 		// no-op if finalizer has been removed.
 		if !util.HasFinalizer(record, cloudkitv1.DNSRecordFinalizer) {
-			// glog.Infof("reconciling machine object %v causes a no-op as there is no finalizer.", name)
+			logger.Debug("deleted resource with no finalizer present, nothing to do")
 			return reconcile.Result{}, nil
 		}
-		// glog.Infof("reconciling machine object %v triggers delete.", name)
+		logger.Debug("reconciling dnsrecord triggers actuator delete.")
 		if err := r.actuator.Delete(record); err != nil {
-			// glog.Errorf("Error deleting machine object %v; %v", name, err)
+			logger.WithError(err).Error("error deleting dnsrecord object")
 			return reconcile.Result{}, err
 		}
 
 		// Remove finalizer on successful deletion.
-		// glog.Infof("machine object %v deletion successful, removing finalizer.", name)
+		logger.Debug("dnsrecord deletion successful, removing finalizer.")
 		util.DeleteFinalizer(record, cloudkitv1.DNSRecordFinalizer)
 		if err := r.Client.Update(context.Background(), record); err != nil {
-			// glog.Errorf("Error removing finalizer from machine object %v; %v", name, err)
+			logger.WithError(err).Error("error removing finalizer from dnsrecord object")
 			return reconcile.Result{}, err
 		}
+		logger.Debug("dnsrecord finalizer removed")
 		return reconcile.Result{}, nil
 	}
 
 	exist, err := r.actuator.Exists(record)
 	if err != nil {
-		// glog.Errorf("Error checking existence of machine instance for machine object %v; %v", name, err)
+		logger.WithError(err).Error("error checking existence of dnsrecord")
 		return reconcile.Result{}, err
 	}
 	if exist {
-		// glog.Infof("Reconciling machine object %v triggers idempotent update.", name)
+		logger.Debug("dnsrecord exists, calling idempotent update")
 		err := r.actuator.Update(record)
 		if err != nil {
-			// glog.Warningf("unable to update machine %v: %v", name, err)
+			logger.WithError(err).Error("error updating dnsrecord")
 			return reconcile.Result{}, err
 		}
+		logger.Debug("dnsrecord updated successfully")
 		return reconcile.Result{}, nil
 	}
-	// glog.Infof("Reconciling machine object %v triggers idempotent create.", m.ObjectMeta.Name)
+	logger.Debug("dnsrecord does not exist, calling create")
 	if err := r.actuator.Create(record); err != nil {
-		// glog.Warningf("unable to create machine %v: %v", name, err)
+		logger.WithError(err).Error("error creating dnsrecord")
 		return reconcile.Result{}, err
 	}
+	logger.Debug("dnsrecord created successfully")
 
 	return reconcile.Result{}, nil
 }
